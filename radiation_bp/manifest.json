@@ -1,0 +1,51 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "☢️ Radiation v2 - HARDCORE EDITION",
+    "description": "Все на равных: кто не сьебал за 30 секунд — тому пизда! Без исключений, без иммунитета, без защитных костюмов.",
+    "uuid": "e8a9ed11-1713-4fc7-8f42-dc414ae5a449",
+    "version": [
+      2,
+      0,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      20,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "description": "Behavior Pack для системы радиации",
+      "type": "data",
+      "uuid": "8c2de9d2-861b-43da-8c77-5440380afcf0",
+      "version": [
+        2,
+        0,
+        0
+      ]
+    },
+    {
+      "description": "Script API модуль",
+      "type": "script",
+      "language": "javascript",
+      "uuid": "01ab865f-197f-45dc-89a4-69dcf9329eda",
+      "version": [
+        2,
+        0,
+        0
+      ],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "1.0.0"
+    }
+  ],
+  "capabilities": [
+    "chat"
+  ]
+}

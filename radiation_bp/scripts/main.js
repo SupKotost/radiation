@@ -4,7 +4,6 @@
 // Инициализация всех модулей системы радиации
 // ============================================
 
-import { world, system } from "@minecraft/server";
 import { radiationManager } from "./RadiationManager.js";
 import { hudManager } from "./HUD.js";
 import { commandManager } from "./Commands.js";
@@ -13,6 +12,7 @@ import { bogCompatibility } from "./BoGCompatibility.js";
 // ============================================
 // Логирование запуска
 // ============================================
+import { world } from "@minecraft/server";
 
 world.sendMessage(" §l §a☢️ RADIATION V2 - HARDCORE EDITION §r");
 world.sendMessage(" §7Запуск системы радиации... §r");

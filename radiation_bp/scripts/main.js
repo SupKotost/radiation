@@ -1,16 +1,14 @@
 // ============================================
-// main.js - HARDCORE EDITION
+// main.js - Radiation v2 HARDCORE EDITION
 // ============================================
 
-import { world, system } from "@minecraft/server";
+import { world } from "@minecraft/server";
 import { radiationManager } from "./RadiationManager_v2.js";
 import { hudManager } from "./HUD_v2.js";
-import { commandManager } from "./Commands_v2.js";
-import { bogCompatibility } from "./BoGCompatibility_v2.js";
+import { commandsManager } from "./Commands_v2.js";
+import { boGCompatibility } from "./BoGCompatibility_v2.js";
+import { distantHorizons } from "./DistantHorizons.js";
 
-world.sendMessage(" §l §a☢️ RADIATION V2 - HARDCORE EDITION §r");
-world.sendMessage(" §7Запуск системы радиации... §r");
-world.sendMessage(" §7Все на равных: кто не сьебал за 30 секунд — тому пизда! §r");
-world.sendMessage(" §aСистема готова! §r");
-
-export { radiationManager, hudManager, commandManager, bogCompatibility };
+// Инициализация всех модулей
+world.sendMessage(" §a☢️ Radiation v2 - HARDCORE EDITION загружен! §r");
+world.sendMessage(" §a🌍 Distant Horizons - 42 чанка оптимизировано! §r");

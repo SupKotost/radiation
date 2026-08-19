@@ -1,174 +1,106 @@
 // ============================================
 // BoGCompatibility.js v2 - HARDCORE EDITION
 // ============================================
-// Совместимость с Bombs of Glory (BoG)
-// Авто-создание зон радиации после ядерных взрывов
+// Совместимость с:
+// - Breakout: Containment (BoG)
+// - Atomic Destruction: Nuclear Bombs (EL SANDO) - TNT ядерки 1-4 уровня
 // ============================================
 
 import { world, system } from "@minecraft/server";
-import { radiationManager } from "./RadiationManager.js";
+import { radiationManager } from "./RadiationManager_v2.js";
 
 class BoGCompatibility {
     constructor() {
-        // Настройки
         this.config = {
-            // Включить ли совместимость с BoG
             enableBoGCompatibility: true,
-            
-            // Автоматически создавать зоны радиации после взрывов
-            autoCreateFallout: true,
-            
-            // Множитель радиуса зоны заражения (от радиуса взрыва)
-            falloutRadiusMultiplier: 1.5,
-            
-            // Интенсивность радиации (0-100)
-            falloutIntensity: 80,
-            
-            // Длительность зоны (в секундах)
-            falloutDuration: 600, // 10 минут
-            
-            // Сообщение в чат о взрыве
-            enableExplosionMessage: true
-        };
-        
-        // Типы бомб BoG и их параметры
-        this.bombTypes = {
-            "atomic": {
-                name: "Атомная бомба",
-                radius: 50,
-                intensity: 60,
-                duration: 300 // 5 минут
-            },
-            "thermonuclear": {
-                name: "Термоядерная бомба",
-                radius: 80,
-                intensity: 70,
-                duration: 450 // 7.5 минут
-            },
-            "apocalypse": {
-                name: "Бомба Апокалипсиса",
-                radius: 150,
-                intensity: 90,
-                duration: 600 // 10 минут
-            },
-            "doomsday": {
-                name: "Бомба Судного Дня",
-                radius: 250,
-                intensity: 100,
-                duration: 900 // 15 минут
+            enableAtomicDestructionCompatibility: true,
+            radiationDamageMultiplier: 1.0,
+            // Радиация от ядерок Atomic Destruction (TNT 1-4)
+            nukeRadiationByTier: {
+                1: 25,  // TNT ядерка 1 уровня = +25% радиации
+                2: 50,  // TNT ядерка 2 уровня = +50% радиации
+                3: 75,  // TNT ядерка 3 уровня = +75% радиации
+                4: 100  // TNT ядерка 4 уровня = +100% радиации (смерть!)
             }
         };
-        
-        // Слушатель событий BoG
-        this.startBoGListener();
+        this.initialize();
     }
     
-    // ============================================
-    // Слушатель событий BoG
-    // ============================================
-    startBoGListener() {
-        // Слушаем событие ядерного взрыва BoG
-        // Примечание: BoG должен отправлять событие через world.sendMessage или custom events
+    initialize() {
+        if (!this.config.enableBoGCompatibility && !this.config.enableAtomicDestructionCompatibility) return;
         
         system.runInterval(() => {
-            // Поиск игроков с эффектами от взрыва BoG
             const players = world.getAllPlayers();
             
             for (const player of players) {
-                // Проверка: игрок получил урон от взрыва?
-                // (здесь можно добавить проверку по эффектам или NBT)
+                const data = radiationManager.playerRadiation.get(player.id);
                 
-                // Если игрок рядом с эпицентром взрыва BoG
-                // Создаём зону радиации
+                if (data && data.level > 0) {
+                    const damage = (data.level / 100) * this.config.radiationDamageMultiplier;
+                    
+                    if (data.level >= 100 && data.countdownTimer === 0) {
+                        player.kill();
+                    } else if (data.level >= 80) {
+                        player.applyDamage(damage, {
+                            cause: "magic",
+                            damageSource: {
+                                cause: "magic",
+                                initiatingEntity: player
+                            }
+                        });
+                    }
+                }
             }
             
-        }, 20); // Каждую секунду
+        }, 20);
     }
     
-    // ============================================
-    // Создание зоны радиации после взрыва BoG
-    // ============================================
-    createFalloutFromBoG(x, y, z, bombType = "atomic") {
-        if (!this.config.enableBoGCompatibility) return;
+    /**
+     * Применяет радиацию от взрыва ядерки Atomic Destruction
+     * @param {Player} player - Игрок
+     * @param {number} nukeTier - Уровень ядерки (1-4)
+     * @param {number} distance - Расстояние от взрыва в блоках
+     */
+    applyNukeRadiation(player, nukeTier, distance = 0) {
+        if (!this.config.enableAtomicDestructionCompatibility) return;
         
-        const bomb = this.bombTypes[bombType] || this.bombTypes.atomic;
+        const baseRadiation = this.config.nukeRadiationByTier[nukeTier] || 0;
+        if (baseRadiation === 0) return;
         
-        // Радиус зоны заражения
-        const falloutRadius = bomb.radius * this.config.falloutRadiusMultiplier;
+        // Уменьшаем радиацию с расстоянием (каждые 10 блоков = -10% радиации)
+        const distanceReduction = Math.min(0.9, distance / 100);
+        const finalRadiation = baseRadiation * (1 - distanceReduction);
         
-        // Интенсивность
-        const intensity = bomb.intensity;
+        const currentData = radiationManager.playerRadiation.get(player.id);
+        const currentLevel = currentData?.level || 0;
+        const newLevel = Math.min(100, currentLevel + finalRadiation);
         
-        // Длительность
-        const duration = bomb.duration;
+        radiationManager.setRadiationLevel(player, newLevel);
         
-        // Создание зоны
-        const zone = radiationManager.addZone(x, y, z, falloutRadius, intensity, duration);
-        
-        // Сообщение в чат
-        if (this.config.enableExplosionMessage) {
-            world.sendMessage(`\n §l §c☢️ ЯДЕРНЫЙ ВЗРЫВ! §r`);
-            world.sendMessage(` §7Тип: §f${bomb.name} §r`);
-            world.sendMessage(` §7Координаты: §f${x}, ${y}, ${z} §r`);
-            world.sendMessage(` §7Радиус заражения: §c${falloutRadius} блоков §r`);
-            world.sendMessage(` §eБЕГИТЕ ИЗ ЗОНЫ! §r\n`);
+        // Сообщение игроку
+        if (distance < 20) {
+            player.sendMessage(` §c☢️ ВЫ ПОПАЛИ ПОД ВЗРЫВ ЯДЕРКИ ${nukeTier} УРОВНЯ! §r`);
+            player.sendMessage(` §7Радиация: +${Math.round(finalRadiation)}% §r`);
         }
-        
-        return zone;
     }
     
-    // ============================================
-    // Ручное создание зоны (команда)
-    // ============================================
-    manualCreateZone(x, y, z, bombType = "atomic") {
-        return this.createFalloutFromBoG(x, y, z, bombType);
-    }
-    
-    // ============================================
-    // Получение информации о бомбе
-    // ============================================
-    getBombInfo(bombType) {
-        const bomb = this.bombTypes[bombType];
+    /**
+     * Проверяет, была ли ядерка Atomic Destruction взорвана рядом с игроком
+     * Можно вызывать из других модов через события
+     */
+    onNukeExplosion(nukeTier, explosionLocation, affectedPlayers) {
+        if (!this.config.enableAtomicDestructionCompatibility) return;
         
-        if (!bomb) {
-            return {
-                error: "Неизвестный тип бомбы",
-                available: Object.keys(this.bombTypes)
-            };
+        for (const player of affectedPlayers) {
+            const distance = Math.sqrt(
+                Math.pow(player.location.x - explosionLocation.x, 2) +
+                Math.pow(player.location.y - explosionLocation.y, 2) +
+                Math.pow(player.location.z - explosionLocation.z, 2)
+            );
+            
+            this.applyNukeRadiation(player, nukeTier, distance);
         }
-        
-        return {
-            name: bomb.name,
-            radius: bomb.radius,
-            falloutRadius: bomb.radius * this.config.falloutRadiusMultiplier,
-            intensity: bomb.intensity,
-            duration: bomb.duration,
-            durationMinutes: bomb.duration / 60
-        };
-    }
-    
-    // ============================================
-    // Список всех типов бомб
-    // ============================================
-    listBombTypes() {
-        const list = [];
-        
-        for (const [type, bomb] of Object.entries(this.bombTypes)) {
-            list.push({
-                type: type,
-                name: bomb.name,
-                radius: bomb.radius,
-                falloutRadius: bomb.radius * this.config.falloutRadiusMultiplier,
-                intensity: bomb.intensity,
-                duration: `${bomb.duration / 60} мин`
-            });
-        }
-        
-        return list;
     }
 }
 
-// ============================================
-// Экспорт
-// ============================================
-export const bogCompatibility = new BoGCompatibility();
+export const boGCompatibility = new BoGCompatibility();
